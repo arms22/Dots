@@ -1,0 +1,31 @@
+ハードウェアセッティング
+----------------------------------------------------------
+dots328.name=Dots w/ ATmega328
+
+dots328.upload.protocol=arduino
+dots328.upload.maximum_size=30720
+dots328.upload.speed=57600
+
+dots328.bootloader.low_fuses=0xE2
+dots328.bootloader.high_fuses=0xDA
+dots328.bootloader.extended_fuses=0x07
+dots328.bootloader.path=atmega
+dots328.bootloader.file=ATmegaBOOT_168_atmega328_pro_8MHz.hex
+dots328.bootloader.unlock_bits=0x3F
+dots328.bootloader.lock_bits=0x0F
+
+dots328.build.mcu=atmega328p
+dots328.build.f_cpu=8000000L
+dots328.build.core=arduino
+dots328.build.variant=standard
+
+
+ブートローダー書き込み
+----------------------------------------------------------
+/Applications/Arduino.app/Contents/Resources/Java/hardware/tools/avr/bin/avrdude -C/Applications/Arduino.app/Contents/Resources/Java/hardware/tools/avr/etc/avrdude.conf -v -v -v -v -patmega328p -cstk500v2 -Pusb -e -Ulock:w:0x3F:m -Uefuse:w:0x07:m -Uhfuse:w:0xDA:m -Ulfuse:w:0xE2:m
+/Applications/Arduino.app/Contents/Resources/Java/hardware/tools/avr/bin/avrdude -C/Applications/Arduino.app/Contents/Resources/Java/hardware/tools/avr/etc/avrdude.conf -v -v -v -v -patmega328p -cstk500v2 -Pusb -Uflash:w:/Applications/Arduino.app/Contents/Resources/Java/hardware/arduino/bootloaders/atmega/ATmegaBOOT_168_atmega328_pro_8MHz.hex:i -Ulock:w:0x0F:m
+
+デフォルトスケッチ書き込み
+----------------------------------------------------------
+/Applications/Arduino.app/Contents/Resources/Java/hardware/tools/avr/bin/avrdude -C/Applications/Arduino.app/Contents/Resources/Java/hardware/tools/avr/etc/avrdude.conf -v -v -v -v -patmega328p -carduino -P/dev/cu.usbserial-A800csyY -b57600 -D -Uflash:w:dots.hex:i
+
