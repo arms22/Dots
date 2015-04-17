@@ -6,12 +6,12 @@
  */
 
 #include <Dots.h>
-#include <Bounce.h>
+#include <Bounce2.h>
 
 const int BUTTON = 18;  // Analog 4
 
 Dots myDots = Dots();
-Bounce bouncer = Bounce(BUTTON, 10);
+Bounce bouncer = Bounce();
 int state = 0;
 
 boolean delayUntilStateChange(unsigned long ms)
@@ -39,8 +39,9 @@ boolean delayUntilStateChange(unsigned long ms)
 
 void setup()
 {
-  pinMode(BUTTON, INPUT);
-  digitalWrite(BUTTON, HIGH);
+  pinMode(BUTTON, INPUT_PULLUP);
+  bouncer.attach(BUTTON);
+  bouncer.interval(10);
   myDots.begin();
 }
 
