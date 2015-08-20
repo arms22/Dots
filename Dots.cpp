@@ -37,6 +37,7 @@ Dots::Dots(uint8_t r0,uint8_t r1,uint8_t r2,uint8_t r3,
 	_numOfRows = 8;
 	_numOfCols = 8;
 	_autoDetect = false;
+	_anodeCommon = false;
 }
 
 Dots::Dots(uint8_t r0,uint8_t r1,uint8_t r2,uint8_t r3,
@@ -53,6 +54,7 @@ Dots::Dots(uint8_t r0,uint8_t r1,uint8_t r2,uint8_t r3,
 	_numOfRows = 7;
 	_numOfCols = 5;
 	_autoDetect = false;
+	_anodeCommon = false;
 }
 
 void Dots::init12d(void)
@@ -66,6 +68,7 @@ void Dots::init12d(void)
 	_numOfRows = 8;
 	_numOfCols = 8;
 	_autoDetect = false;
+	_anodeCommon = false;
 }
 
 void Dots::init12c(void)
@@ -79,6 +82,7 @@ void Dots::init12c(void)
 	_numOfRows = 8;
 	_numOfCols = 8;
 	_autoDetect = false;
+	_anodeCommon = false;
 }
 
 void Dots::autoDetect(void)
@@ -214,7 +218,7 @@ void Dots::update(void)
 void Dots::update(void)
 {
 	uint8_t i,data,mask;
-	digitalWrite(_rowPins[_row], LOW);
+	digitalWrite(_rowPins[_row], _anodeCommon);
 	_row++;
 	if(_row >= _numOfRows){
 		_row = 0;
@@ -223,13 +227,13 @@ void Dots::update(void)
 	mask = 0x80;
 	for(i=0;i<_numOfCols;i++){
 		if(data & mask){
-			digitalWrite(_colPins[i], LOW);
+			digitalWrite(_colPins[i], _anodeCommon);
 		}else{
-			digitalWrite(_colPins[i], HIGH);
+			digitalWrite(_colPins[i], !_anodeCommon);
 		}
 		mask >>= 1;
 	}
-	digitalWrite(_rowPins[_row], HIGH);
+	digitalWrite(_rowPins[_row], !_anodeCommon);
 }
 #endif
 

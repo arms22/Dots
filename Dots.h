@@ -12,7 +12,7 @@
 
 #include <Arduino.h>
 
-#define DOTS_FAST_WRITE_ENABLE (1)
+#define DOTS_FAST_WRITE_ENABLE (0)
 
 #define Dotsduino_12c (1)
 #define Dotsduino_12d (2)
@@ -27,6 +27,7 @@ private:
 	uint8_t _numOfCols;
 	uint8_t _row;
 	uint8_t _autoDetect;
+	uint8_t _anodeCommon;
 	void init12d(void);
 	void init12c(void);
 	void autoDetect(void);
