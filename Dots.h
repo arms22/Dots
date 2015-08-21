@@ -14,8 +14,9 @@
 
 #define DOTS_FAST_WRITE_ENABLE (1)
 
-#define Dotsduino_12c (1)
-#define Dotsduino_12d (2)
+#define Dots_12c  (1)
+#define Dots_12d  (2)
+#define Dots_12cc (3)
 
 class Dots
 {
@@ -27,8 +28,9 @@ private:
 	uint8_t _numOfCols;
 	uint8_t _row;
 	uint8_t _autoDetect;
+	uint8_t _anodeCommon;
 	void init12d(void);
-	void init12c(void);
+	void init12c(uint8_t);
 	void autoDetect(void);
 public:
 	Dots(int which = 0);
