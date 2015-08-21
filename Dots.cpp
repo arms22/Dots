@@ -10,13 +10,19 @@
 #include "Dots.h"
 #include <avr/interrupt.h>
 
+#define ANODE_COMMON (0xff)
+#define CATHODE_COMMON (0x00)
+
 Dots::Dots(int which)
 {
-	if(which == Dotsduino_12d){
+	if(which == Dots_12d){
 		init12d();
 	}
-	else if(which == Dotsduino_12c){
-		init12c();
+	else if(which == Dots_12c){
+		init12c(ANODE_COMMON);
+	}
+	else if(which == Dots_12cc){
+		init12c(CATHODE_COMMON);
 	}
 	else{
 		_autoDetect = true;
@@ -37,7 +43,7 @@ Dots::Dots(uint8_t r0,uint8_t r1,uint8_t r2,uint8_t r3,
 	_numOfRows = 8;
 	_numOfCols = 8;
 	_autoDetect = false;
-	_anodeCommon = false;
+	_anodeCommon = ANODE_COMMON;
 }
 
 Dots::Dots(uint8_t r0,uint8_t r1,uint8_t r2,uint8_t r3,
@@ -54,7 +60,7 @@ Dots::Dots(uint8_t r0,uint8_t r1,uint8_t r2,uint8_t r3,
 	_numOfRows = 7;
 	_numOfCols = 5;
 	_autoDetect = false;
-	_anodeCommon = false;
+	_anodeCommon = ANODE_COMMON;
 }
 
 void Dots::init12d(void)
@@ -68,10 +74,10 @@ void Dots::init12d(void)
 	_numOfRows = 8;
 	_numOfCols = 8;
 	_autoDetect = false;
-	_anodeCommon = false;
+	_anodeCommon = ANODE_COMMON;
 }
 
-void Dots::init12c(void)
+void Dots::init12c(uint8_t common)
 {
 	_rowPins[0] = 9;	_rowPins[1] = 4;	_rowPins[2] = 10;   _rowPins[3] = 6;
 	_rowPins[4] = 17;   _rowPins[5] = 11;   _rowPins[6] = 16;   _rowPins[7] = 13;
@@ -82,43 +88,56 @@ void Dots::init12c(void)
 	_numOfRows = 8;
 	_numOfCols = 8;
 	_autoDetect = false;
-	_anodeCommon = false;
+	_anodeCommon = common;
+}
+
+static uint8_t measureDiodeCapacitance(uint8_t anodePin, uint8_t cathodePin)
+{
+	uint8_t result;
+
+	// Discharge carry
+	pinMode(anodePin, OUTPUT);
+	pinMode(cathodePin, OUTPUT);
+
+	digitalWrite(anodePin, LOW);
+	digitalWrite(cathodePin, LOW);
+
+	delayMicroseconds(1000);
+
+	// Charge carry
+	digitalWrite(cathodePin, HIGH);
+	delayMicroseconds(100);
+
+	// Measure Capacitance
+	pinMode(cathodePin, INPUT);
+	for(result=0; digitalRead(cathodePin) && (result < 255); result++)
+		;
+
+	pinMode(anodePin, INPUT);
+	return result;
 }
 
 void Dots::autoDetect(void)
 {
-	uint8_t i, row, col, cnt;
-	
+	uint8_t i, cap;
 	for(i=2; i<18; i++){
 		pinMode(i, INPUT);
 		digitalWrite(i, LOW);
 	}
-	
-	row = 9;					// 1.2c: R0 1.2d: C3
-	col = 15;					// 1.2c: C1 1.2d: R5
-	
-	pinMode(row, OUTPUT);
-	pinMode(col, OUTPUT);
-	
-	// discharge
-	digitalWrite(col, LOW);
-	delayMicroseconds(1000);
-	
-	// charge
-	digitalWrite(col, HIGH);
-	delayMicroseconds(10);
-	
-	// measure
-	pinMode(col, INPUT);
-	digitalWrite(col, LOW);
-	
-	for(cnt=0; digitalRead(col) && (cnt < 200); cnt++);
-	
-	// which matrix?
-	if(cnt > 50){
-		init12c();
+	// pin 16 --> 1.2c: R7 1.2d: R7
+	// pin 12 --> 1.2c: C5 1.2d: C1
+	cap = measureDiodeCapacitance(16, 12);
+	if(cap > 50){
+		// pin  9 --> 1.2c: R0 1.2d: C3
+		// pin 15 --> 1.2c: C1 1.2d: R5
+		cap = measureDiodeCapacitance(9, 15);
+		if(cap > 50){
+			init12c(ANODE_COMMON);
+		}else{
+			init12d();
+		}
 	}else{
-		init12d();
+		init12c(CATHODE_COMMON);
 	}
 }
 
@@ -190,26 +209,29 @@ static inline void outp(uint8_t pin, uint8_t val)
 		*out |= bit;
 	}
 }
+
 void Dots::update(void)
 {
     uint8_t data;
-	outp(_rowPins[_row], LOW);
+
+	outp(_rowPins[_row], !_anodeCommon);
 	_row++;
 	if(_row >= _numOfRows){
 		_row = 0;
 	}
 	data = _buffer[_row];
+	data = data ^ _anodeCommon;
     switch (_numOfCols) {
-        case 8: outp(_colPins[7], !(data & 0x01));
-        case 7: outp(_colPins[6], !(data & 0x02));
-        case 6: outp(_colPins[5], !(data & 0x04));
-        case 5: outp(_colPins[4], !(data & 0x08));
-        case 4: outp(_colPins[3], !(data & 0x10));
-        case 3: outp(_colPins[2], !(data & 0x20));
-        case 2: outp(_colPins[1], !(data & 0x40));
-        case 1: outp(_colPins[0], !(data & 0x80));
+        case 8: outp(_colPins[7], (data & 0x01));
+        case 7: outp(_colPins[6], (data & 0x02));
+        case 6: outp(_colPins[5], (data & 0x04));
+        case 5: outp(_colPins[4], (data & 0x08));
+        case 4: outp(_colPins[3], (data & 0x10));
+        case 3: outp(_colPins[2], (data & 0x20));
+        case 2: outp(_colPins[1], (data & 0x40));
+        case 1: outp(_colPins[0], (data & 0x80));
     }
-	outp(_rowPins[_row], HIGH);
+	outp(_rowPins[_row], _anodeCommon);
 
 #define UPDATE_INTERVAL 64
     OCR0A += UPDATE_INTERVAL;
@@ -218,22 +240,19 @@ void Dots::update(void)
 void Dots::update(void)
 {
 	uint8_t i,data,mask;
-	digitalWrite(_rowPins[_row], _anodeCommon);
+	digitalWrite(_rowPins[_row], !_anodeCommon);
 	_row++;
 	if(_row >= _numOfRows){
 		_row = 0;
 	}
 	data = _buffer[_row];
+	data = data ^ _anodeCommon;
 	mask = 0x80;
 	for(i=0;i<_numOfCols;i++){
-		if(data & mask){
-			digitalWrite(_colPins[i], _anodeCommon);
-		}else{
-			digitalWrite(_colPins[i], !_anodeCommon);
-		}
+		digitalWrite(_colPins[i], data & mask);
 		mask >>= 1;
 	}
-	digitalWrite(_rowPins[_row], !_anodeCommon);
+	digitalWrite(_rowPins[_row], _anodeCommon);
 }
 #endif
 
