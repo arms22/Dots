@@ -13,6 +13,7 @@
 #include <Arduino.h>
 
 #define DOTS_FAST_WRITE_ENABLE (1)
+#define DOTS_DOUBLE_BUFFERING  (1)
 
 #define Dots_12c  (1)
 #define Dots_12d  (2)
@@ -23,12 +24,18 @@ class Dots
 private:
 	uint8_t _rowPins[8];
 	uint8_t _colPins[8];
+#if DOTS_DOUBLE_BUFFERING
+	uint8_t _frontBuffer[8];
+#endif
 	uint8_t _buffer[8];
 	uint8_t _numOfRows;
 	uint8_t _numOfCols;
 	uint8_t _row;
 	uint8_t _autoDetect;
 	uint8_t _anodeCommon;
+#if DOTS_DOUBLE_BUFFERING
+	volatile uint8_t _flip;
+#endif
 	void init12d(void);
 	void init12c(uint8_t);
 	void autoDetect(void);
@@ -52,6 +59,9 @@ public:
 	void write(uint8_t y, const uint8_t *buffer, size_t size);
 	void clear(void);
 	void update(void);
+#if DOTS_DOUBLE_BUFFERING
+	void flip(void);
+#endif
 	static Dots *active_object;
 };
 

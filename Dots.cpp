@@ -218,8 +218,25 @@ void Dots::update(void)
 	_row++;
 	if(_row >= _numOfRows){
 		_row = 0;
+#if DOTS_DOUBLE_BUFFERING
+		if(_flip){
+			_frontBuffer[0] = _buffer[0];
+			_frontBuffer[1] = _buffer[1];
+			_frontBuffer[2] = _buffer[2];
+			_frontBuffer[3] = _buffer[3];
+			_frontBuffer[4] = _buffer[4];
+			_frontBuffer[5] = _buffer[5];
+			_frontBuffer[6] = _buffer[6];
+			_frontBuffer[7] = _buffer[7];
+			_flip = false;
+		}
+#endif
 	}
+#if DOTS_DOUBLE_BUFFERING
+	data = _frontBuffer[_row];
+#else
 	data = _buffer[_row];
+#endif
 	data = data ^ _anodeCommon;
     switch (_numOfCols) {
         case 8: outp(_colPins[7], (data & 0x01));
@@ -244,8 +261,20 @@ void Dots::update(void)
 	_row++;
 	if(_row >= _numOfRows){
 		_row = 0;
+#if DOTS_DOUBLE_BUFFERING
+		if(_flip){
+			for(i=0;i<8;i++){
+				_frontBuffer[i] = _buffer[i];
+			}
+			_flip = false;
+		}
+#endif
 	}
+#if DOTS_DOUBLE_BUFFERING
+	data = _frontBuffer[_row];
+#else
 	data = _buffer[_row];
+#endif
 	data = data ^ _anodeCommon;
 	mask = 0x80;
 	for(i=0;i<_numOfCols;i++){
@@ -253,6 +282,14 @@ void Dots::update(void)
 		mask >>= 1;
 	}
 	digitalWrite(_rowPins[_row], _anodeCommon);
+}
+#endif
+
+#if DOTS_DOUBLE_BUFFERING
+void Dots::flip(void)
+{
+	_flip = true;
+	while(_flip);
 }
 #endif
 
