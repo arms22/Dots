@@ -13,6 +13,7 @@
 #include <Arduino.h>
 
 #define DOTS_FAST_WRITE_ENABLE (1)
+#define DOTS_ADJUST_BRIGHTNESS (1)
 
 #define Dots_12c  (1)
 #define Dots_12d  (2)

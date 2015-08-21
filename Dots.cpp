@@ -210,16 +210,33 @@ static inline void outp(uint8_t pin, uint8_t val)
 	}
 }
 
+#if DOTS_ADJUST_BRIGHTNESS
+static inline uint8_t popcount(uint8_t data)
+{
+	data = (data & 0x55) + ((data & 0xaa) >> 1);
+	data = (data & 0x33) + ((data & 0xcc) >> 2);
+	data = (data & 0x0f) + ((data & 0xf0) >> 4);
+	return data;
+}
+#endif
+
 void Dots::update(void)
 {
     uint8_t data;
 
+#if DOTS_ADJUST_BRIGHTNESS
+    uint8_t adjust = 0;
+#endif
 	outp(_rowPins[_row], !_anodeCommon);
 	_row++;
 	if(_row >= _numOfRows){
 		_row = 0;
 	}
 	data = _buffer[_row];
+#if DOTS_ADJUST_BRIGHTNESS
+	adjust = popcount(data);
+	adjust = (adjust << 4) + (adjust << 3);
+#endif
 	data = data ^ _anodeCommon;
     switch (_numOfCols) {
         case 8: outp(_colPins[7], (data & 0x01));
@@ -235,6 +252,9 @@ void Dots::update(void)
 
 #define UPDATE_INTERVAL 64
     OCR0A += UPDATE_INTERVAL;
+#if DOTS_ADJUST_BRIGHTNESS
+	OCR0A += adjust;
+#endif
 }
 #else
 void Dots::update(void)
