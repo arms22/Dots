@@ -14,6 +14,8 @@
 
 #define DOTS_FAST_WRITE_ENABLE (1)
 #define DOTS_ADJUST_BRIGHTNESS (1)
+#define DOTS_CAP_SENSE_ENABLE  (1)
+#define DOTS_CAP_SENSE_MEASURE_LIMITS (255)
 
 #define Dots_12c  (1)
 #define Dots_12d  (2)
@@ -33,6 +35,11 @@ private:
 	void init12d(void);
 	void init12c(uint8_t);
 	void autoDetect(void);
+#if DOTS_CAP_SENSE_ENABLE
+	uint8_t _capacities[8][8];
+	uint8_t _scanRow;
+	void scanRow(void);
+#endif
 public:
 	Dots(int which = 0);
 	
@@ -53,6 +60,11 @@ public:
 	void write(uint8_t y, const uint8_t *buffer, size_t size);
 	void clear(void);
 	void update(void);
+#if DOTS_CAP_SENSE_ENABLE
+	uint8_t capacityAt(uint8_t x, uint8_t y);
+#else
+	uint8_t capacityAt(uint8_t x, uint8_t y) { return 0; }
+#endif
 	static Dots *active_object;
 };
 

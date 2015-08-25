@@ -264,6 +264,9 @@ void Dots::update(void)
 	_row++;
 	if(_row >= _numOfRows){
 		_row = 0;
+#if DOTS_CAP_SENSE_ENABLE
+		scanRow();
+#endif
 	}
 	data = _buffer[_row];
 	data = data ^ _anodeCommon;
@@ -273,6 +276,64 @@ void Dots::update(void)
 		mask >>= 1;
 	}
 	digitalWrite(_rowPins[_row], _anodeCommon);
+}
+#endif
+
+#if DOTS_CAP_SENSE_ENABLE
+uint8_t Dots::capacityAt(uint8_t x, uint8_t y)
+{
+	return _capacities[y][x];
+}
+
+void Dots::scanRow(void)
+{
+	uint8_t i, cnt;
+	uint8_t bits[_numOfCols];
+	uint8_t ports[_numOfCols];
+	
+	// All Cathodes Output High.
+	for(i=0; i<_numOfCols; i++){
+		bits[i] = digitalPinToBitMask(_colPins[i]);
+		ports[i] = digitalPinToPort(_colPins[i]);
+        
+		*portModeRegister(ports[i]) |= bits[i];
+		*portOutputRegister(ports[i]) |= bits[i];
+        
+		_capacities[_scanRow][i] = DOTS_CAP_SENSE_MEASURE_LIMITS;
+	}
+	
+	// Anode Outout Low.
+	pinMode(_rowPins[_scanRow], OUTPUT);
+	
+	// Wait for a while to Charge
+	delayMicroseconds(10);
+	
+	// Isolate the pin connected to cathods, turn off internal pull-up resistor
+	for(i=0; i<_numOfCols; i++){
+		*portModeRegister(ports[i]) &= ~bits[i];
+		*portOutputRegister(ports[i]) &= ~bits[i];
+	}
+	
+	// Measure How long it takes for Cathodes to become Low
+	for(cnt=0; cnt<DOTS_CAP_SENSE_MEASURE_LIMITS; cnt++){
+		for(i=0; i<_numOfCols; i++){
+			if((cnt < _capacities[_scanRow][i]) && ((*portInputRegister(ports[i]) & bits[i]) == 0)){
+				_capacities[_scanRow][i] = cnt;
+			}
+		}
+	}
+	
+	pinMode(_rowPins[_scanRow], INPUT);
+	
+	// All Cathodes Output
+	for(i=0; i<_numOfCols; i++){
+		*portModeRegister(ports[i]) |= bits[i];
+	}
+    
+	_scanRow++;
+	if(_scanRow >= _numOfRows){
+		_scanRow = 0;
+	}
 }
 #endif
 
