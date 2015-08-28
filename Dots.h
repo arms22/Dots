@@ -36,9 +36,9 @@ private:
 	void init12c(uint8_t);
 	void autoDetect(void);
 #if DOTS_CAP_SENSE_ENABLE
-	uint8_t _capacities[8][8];
-	uint8_t _scanRow;
-	void scanRow(void);
+	uint8_t _capacitance[8][8];
+	uint8_t _anodeIndex;
+	void measureCapacitance(void);
 #endif
 public:
 	Dots(int which = 0);
@@ -61,9 +61,9 @@ public:
 	void clear(void);
 	void update(void);
 #if DOTS_CAP_SENSE_ENABLE
-	uint8_t capacityAt(uint8_t x, uint8_t y);
+	uint8_t capacitanceAt(uint8_t x, uint8_t y);
 #else
-	uint8_t capacityAt(uint8_t x, uint8_t y) { return 0; }
+	uint8_t capacitanceAt(uint8_t x, uint8_t y) { return 0; }
 #endif
 	static Dots *active_object;
 };

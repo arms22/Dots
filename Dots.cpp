@@ -36,10 +36,10 @@ Dots::Dots(uint8_t r0,uint8_t r1,uint8_t r2,uint8_t r3,
 {
 	_rowPins[0] = r0; _rowPins[1] = r1; _rowPins[2] = r2; _rowPins[3] = r3;
 	_rowPins[4] = r4; _rowPins[5] = r5; _rowPins[6] = r6; _rowPins[7] = r7;
-	
+
 	_colPins[0] = c0; _colPins[1] = c1; _colPins[2] = c2; _colPins[3] = c3;
 	_colPins[4] = c4; _colPins[5] = c5; _colPins[6] = c6; _colPins[7] = c7;
-	
+
 	_numOfRows = 8;
 	_numOfCols = 8;
 	_autoDetect = false;
@@ -53,10 +53,10 @@ Dots::Dots(uint8_t r0,uint8_t r1,uint8_t r2,uint8_t r3,
 {
 	_rowPins[0] = r0; _rowPins[1] = r1; _rowPins[2] = r2; _rowPins[3] = r3;
 	_rowPins[4] = r4; _rowPins[5] = r5; _rowPins[6] = r6;
-	
+
 	_colPins[0] = c0; _colPins[1] = c1; _colPins[2] = c2; _colPins[3] = c3;
 	_colPins[4] = c4;
-	
+
 	_numOfRows = 7;
 	_numOfCols = 5;
 	_autoDetect = false;
@@ -67,10 +67,10 @@ void Dots::init12d(void)
 {
 	_rowPins[0] = 2;	_rowPins[1] = 3;	_rowPins[2] = 4;	_rowPins[3] = 13;
 	_rowPins[4] = 14;   _rowPins[5] = 15;   _rowPins[6] = 16;   _rowPins[7] = 17;
-	
+
 	_colPins[0] = 12;   _colPins[1] = 11;   _colPins[2] = 10;   _colPins[3] = 9;
 	_colPins[4] = 5;	_colPins[5] = 6;	_colPins[6] = 7;	_colPins[7] = 8;
-	
+
 	_numOfRows = 8;
 	_numOfCols = 8;
 	_autoDetect = false;
@@ -81,10 +81,10 @@ void Dots::init12c(uint8_t common)
 {
 	_rowPins[0] = 9;	_rowPins[1] = 4;	_rowPins[2] = 10;   _rowPins[3] = 6;
 	_rowPins[4] = 17;   _rowPins[5] = 11;   _rowPins[6] = 16;   _rowPins[7] = 13;
-	
+
 	_colPins[0] = 5;	_colPins[1] = 15;   _colPins[2] = 14;   _colPins[3] = 8;
 	_colPins[4] = 12;   _colPins[5] = 7;	_colPins[6] = 3;	_colPins[7] = 2;
-	
+
 	_numOfRows = 8;
 	_numOfCols = 8;
 	_autoDetect = false;
@@ -202,11 +202,10 @@ static inline void outp(uint8_t pin, uint8_t val)
 {
 	uint8_t bit = digitalPinToBitMask(pin);
 	uint8_t port = digitalPinToPort(pin);
-	volatile uint8_t *out = portOutputRegister(port);
 	if (val == LOW) {
-		*out &= ~bit;
+		*portOutputRegister(port) &= ~bit;
 	} else {
-		*out |= bit;
+		*portOutputRegister(port) |= bit;
 	}
 }
 
@@ -217,6 +216,138 @@ static inline uint8_t popcount(uint8_t data)
 	data = (data & 0x33) + ((data & 0xcc) >> 2);
 	data = (data & 0x0f) + ((data & 0xf0) >> 4);
 	return data;
+}
+#endif
+
+#if DOTS_CAP_SENSE_ENABLE
+uint8_t Dots::capacitanceAt(uint8_t x, uint8_t y)
+{
+	return _capacitance[y][x];
+}
+
+static inline void mode(uint8_t pin, uint8_t val)
+{
+	uint8_t bit = digitalPinToBitMask(pin);
+	uint8_t port = digitalPinToPort(pin);
+	if (mode == INPUT) {
+		*portModeRegister(port) &= ~bit;
+		*portOutputRegister(port) &= ~bit;
+	} else {
+		*portModeRegister(port) |= bit;
+		*portOutputRegister(port) &= ~bit;
+	}
+}
+
+static inline uint8_t inp(uint8_t pin)
+{
+	uint8_t bit = digitalPinToBitMask(pin);
+	uint8_t port = digitalPinToPort(pin);
+	return *portInputRegister(port) & bit;
+}
+
+static void Dots::measureCapacitance(void)
+{
+	uint8_t i, cnt, num_cathod, num_anode, pitch;
+	uint8_t *anode_pins, *cathod_pins;
+	uint8_t bits[8];
+	uint8_t ports[8];
+
+	if(_anodeCommon){
+		num_anode = _numOfRows;
+		num_cathod = _numOfCols;
+		anode_pins = _rowPins;
+		cathod_pins = _colPins;
+		pitch = 1;
+	}else{
+		num_anode = _numOfCols;
+		num_cathod = _numOfRows;
+		anode_pins = _rowPins;
+		cathod_pins = _colPins;
+		pitch = 8;
+	}
+
+#define FOREACH(NUM,LIST,FUNC)	\
+    switch (NUM) {				\
+    case 8: FUNC(7,LIST);		\
+    case 7: FUNC(6,LIST);		\
+    case 6: FUNC(5,LIST);		\
+    case 5: FUNC(4,LIST);		\
+    case 4: FUNC(3,LIST);		\
+    case 3: FUNC(2,LIST);		\
+    case 2: FUNC(1,LIST);		\
+    case 1: FUNC(0,LIST);		\
+    }
+
+	// All Anodes Input
+	// for(i=0; i<num_anode; i++){
+	// 	mode(anode_pins[i], INPUT);
+	// }
+	#define INPUT_MODE(LIST,X)	mode((LIST)[(X)], INPUT)
+    FOREACH(num_anode, anode_pins, INPUT_MODE);
+
+	// All Cathodes Output High.
+	// for(i=0; i<num_cathod; i++){
+	// 	mode(cathod_pins[i], OUTPUT);
+
+	// 	// bits[i] = digitalPinToBitMask(cathod_pins[i]);
+	// 	// ports[i] = digitalPinToPort(cathod_pins[i]);
+
+	// 	// *portModeRegister(ports[i]) |= bits[i];
+	// 	// *portOutputRegister(ports[i]) |= bits[i];
+
+	// 	*(_capacitance + pitch * i) = DOTS_CAP_SENSE_MEASURE_LIMITS;
+	// }
+
+    #define OUTPUT_HIGH(LIST,X)	outp((LIST)[(X)], HIGH);
+    FOREACH(num_cathod, cathod_pins, OUTPUT_HIGH);
+
+	// Anode Outout Low.
+	mode(anode_pins[_anodeIndex], OUTPUT);
+
+	// Wait for a while to Charge
+	delayMicroseconds(10);
+
+	// Isolate the pin connected to cathods, turn off internal pull-up resistor
+	// for(i=0; i<num_cathod; i++){
+	// 	mode(cathod_pins[i], INPUT);
+	// 	// *portModeRegister(ports[i]) &= ~bits[i];
+	// 	// *portOutputRegister(ports[i]) &= ~bits[i];
+	// }
+    FOREACH(num_cathod, cathod_pins, INPUT_MODE);
+
+	// Measure How long it takes for Cathodes to become Low
+	for(cnt=0; cnt<DOTS_CAP_SENSE_MEASURE_LIMITS; cnt++){
+		// for(i=0; i<num_cathod; i++){
+		// 	if(inp(cathod_pins[i])){
+		// 		*(_capacitance + pitch * i) = cnt;
+		// 	}
+		// }
+		#define	INPUT_TEST(LIST,X)\
+			do{\
+				if(inp((LIST)[(X)]))\
+					*(_capacitance + pitch * (X)) = cnt;\
+			}while(0);
+		FOREACH(num_cathod, cathod_pins, INPUT_TEST);
+	}
+
+	// All Cathodes Output
+	// for(i=0; i<num_cathod; i++){
+	// 	mode(cathod_pins[i], OUTPUT);
+	// 	//*portModeRegister(ports[i]) |= bits[i];
+	// }
+    #define OUTPUT_MODE(LIST,X)	mode((LIST)[(X)], OUTPUT);
+    FOREACH(num_cathod, cathod_pins, OUTPUT_MODE);
+
+	// All Anodes Output
+	// for(i=0; i<num_anode; i++){
+	// 	mode(anode_pins[i], OUTPUT);
+	// }
+    FOREACH(num_anode, anode_pins, OUTPUT_MODE);
+
+	_anodeIndex++;
+	if(_anodeIndex >= num_anode){
+		_anodeIndex = 0;
+	}
 }
 #endif
 
@@ -231,6 +362,9 @@ void Dots::update(void)
 	_row++;
 	if(_row >= _numOfRows){
 		_row = 0;
+#if DOTS_CAP_SENSE_ENABLE
+		measureCapacitance();
+#endif
 	}
 	data = _buffer[_row];
 #if DOTS_ADJUST_BRIGHTNESS
@@ -264,9 +398,6 @@ void Dots::update(void)
 	_row++;
 	if(_row >= _numOfRows){
 		_row = 0;
-#if DOTS_CAP_SENSE_ENABLE
-		scanRow();
-#endif
 	}
 	data = _buffer[_row];
 	data = data ^ _anodeCommon;
@@ -276,64 +407,6 @@ void Dots::update(void)
 		mask >>= 1;
 	}
 	digitalWrite(_rowPins[_row], _anodeCommon);
-}
-#endif
-
-#if DOTS_CAP_SENSE_ENABLE
-uint8_t Dots::capacityAt(uint8_t x, uint8_t y)
-{
-	return _capacities[y][x];
-}
-
-void Dots::scanRow(void)
-{
-	uint8_t i, cnt;
-	uint8_t bits[_numOfCols];
-	uint8_t ports[_numOfCols];
-	
-	// All Cathodes Output High.
-	for(i=0; i<_numOfCols; i++){
-		bits[i] = digitalPinToBitMask(_colPins[i]);
-		ports[i] = digitalPinToPort(_colPins[i]);
-        
-		*portModeRegister(ports[i]) |= bits[i];
-		*portOutputRegister(ports[i]) |= bits[i];
-        
-		_capacities[_scanRow][i] = DOTS_CAP_SENSE_MEASURE_LIMITS;
-	}
-	
-	// Anode Outout Low.
-	pinMode(_rowPins[_scanRow], OUTPUT);
-	
-	// Wait for a while to Charge
-	delayMicroseconds(10);
-	
-	// Isolate the pin connected to cathods, turn off internal pull-up resistor
-	for(i=0; i<_numOfCols; i++){
-		*portModeRegister(ports[i]) &= ~bits[i];
-		*portOutputRegister(ports[i]) &= ~bits[i];
-	}
-	
-	// Measure How long it takes for Cathodes to become Low
-	for(cnt=0; cnt<DOTS_CAP_SENSE_MEASURE_LIMITS; cnt++){
-		for(i=0; i<_numOfCols; i++){
-			if((cnt < _capacities[_scanRow][i]) && ((*portInputRegister(ports[i]) & bits[i]) == 0)){
-				_capacities[_scanRow][i] = cnt;
-			}
-		}
-	}
-	
-	pinMode(_rowPins[_scanRow], INPUT);
-	
-	// All Cathodes Output
-	for(i=0; i<_numOfCols; i++){
-		*portModeRegister(ports[i]) |= bits[i];
-	}
-    
-	_scanRow++;
-	if(_scanRow >= _numOfRows){
-		_scanRow = 0;
-	}
 }
 #endif
 
