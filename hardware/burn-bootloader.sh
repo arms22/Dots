@@ -15,3 +15,5 @@ $AVRROOT/bin/avrdude -C$AVRROOT/etc/avrdude.conf -v -v -v -v -patmega328p -cstk5
 echo "######## Write Demo sketch ########"
 sleep 1
 $AVRROOT/bin/avrdude -C$AVRROOT/etc/avrdude.conf -v -patmega328p -carduino -P/dev/cu.usbserial-A800csyY -b57600 -D -Uflash:w:$SKETCH:i
+
+echo $'\a'
