@@ -1,7 +1,7 @@
 #! /usr/bin/env bash
 
 AVRROOT=/Applications/Arduino1.0.6.app/Contents/Resources/Java/hardware/tools/avr
-SKETCH=dotsduino_demo.cpp.hex
+SKETCH=dotsduino_demo.ino.hex
 BOOTLOADER=/Applications/Arduino1.0.6.app/Contents/Resources/Java/hardware/arduino/bootloaders/atmega/ATmegaBOOT_168_atmega328_pro_8MHz.hex
 
 echo "######## Fuse set ########"
