@@ -91,47 +91,64 @@ void Dots::init12c(uint8_t common)
 	_anodeCommon = common;
 }
 
-static uint8_t measureDiodeCapacitance(uint8_t anodePin, uint8_t cathodePin)
+static uint8_t measureDiodeCapacitance(uint8_t anodePin, uint8_t cathodePin, uint8_t times)
 {
-	uint8_t result;
+	uint16_t result = 0;
+	uint8_t i, j;
 
-	// Discharge carry
-	pinMode(anodePin, OUTPUT);
-	pinMode(cathodePin, OUTPUT);
+	for(i=0; i < times; i++){
+		// Discharge carry
+		pinMode(anodePin, OUTPUT);
+		pinMode(cathodePin, OUTPUT);
+		digitalWrite(anodePin, LOW);
+		digitalWrite(cathodePin, LOW);
+		delayMicroseconds(100);
 
-	digitalWrite(anodePin, LOW);
-	digitalWrite(cathodePin, LOW);
+		// Charge carry
+		digitalWrite(cathodePin, HIGH);
+		delayMicroseconds(10);
 
-	delayMicroseconds(100);
+		// Measure Capacitance
+		pinMode(cathodePin, INPUT);
+		for(j=0; j < 255; j++){
+			if(digitalRead(cathodePin) == LOW){
+				break;
+			}
+			delayMicroseconds(100);
+		}
 
-	// Charge carry
-	digitalWrite(cathodePin, HIGH);
-	delayMicroseconds(10);
-
-	// Measure Capacitance
-	pinMode(cathodePin, INPUT);
-	for(result=0; digitalRead(cathodePin) && (result < 255); result++)
-		;
+		result += j;
+	}
 
 	pinMode(anodePin, INPUT);
-	return result;
+	return (result / times);
 }
 
 void Dots::autoDetect(void)
 {
-	uint8_t i, cap;
+	uint8_t i, rev, fow;
 	for(i=2; i<18; i++){
 		pinMode(i, INPUT);
 		digitalWrite(i, LOW);
 	}
-	// pin 16 --> 1.2c: R7 1.2d: R7
-	// pin 12 --> 1.2c: C5 1.2d: C1
-	cap = measureDiodeCapacitance(16, 12);
-	if(cap > 128){
+	// pin 16 --> 1.2c: R7 1.2d: R7 (Anode)
+	// pin 12 --> 1.2c: C5 1.2d: C1 (Cathode)
+	rev = measureDiodeCapacitance(16, 12, 2);
+	fow = measureDiodeCapacitance(12, 16, 2);
+	// Serial.print("1st ");
+	// Serial.print(rev);
+	// Serial.print(" ");
+	// Serial.println(fow);
+	if(rev > fow){
 		// pin  9 --> 1.2c: R0 1.2d: C3
 		// pin 15 --> 1.2c: C1 1.2d: R5
-		cap = measureDiodeCapacitance(9, 15);
-		if(cap > 128){
+		rev = measureDiodeCapacitance(9, 15, 2);
+		fow = measureDiodeCapacitance(15, 9, 2);
+		// Serial.print("2nd ");
+		// Serial.print(rev);
+		// Serial.print(" ");
+		// Serial.println(fow);
+		if(rev > fow){
 			init12c(ANODE_COMMON);
 		}else{
 			init12d();
@@ -149,9 +166,11 @@ void Dots::begin(void)
 	}
 	for(i=0;i<_numOfRows;i++){
 		pinMode(_rowPins[i], OUTPUT);
+		digitalWrite(_rowPins[i], !_anodeCommon);
 	}
 	for(i=0;i<_numOfCols;i++){
 		pinMode(_colPins[i], OUTPUT);
+		digitalWrite(_colPins[i], _anodeCommon);
 	}
 	clear();
 	Dots::active_object = this;
